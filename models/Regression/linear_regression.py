@@ -11,7 +11,7 @@ from optimization.optimization import sgd
 
 
 class LinearRegression:
-	def __init__(self, w, b,train_x,train_y,learning_rate,batch_size,num_epochs):
+	def __init__(self, w, b,train_x,train_y,lambd,learning_rate,batch_size,num_epochs):
 		self.w = w
 		self.b = b
 		self.train_x = train_x
@@ -22,20 +22,26 @@ class LinearRegression:
 		self.learning_rate = learning_rate
 		self.batch_size = batch_size
 		self.num_epochs = num_epochs
+		self.lambd = lambd
 
 	def forward(self,X):
 		return self.net(X,self.w, self.b)
+
+	def l2_penalty(self):
+		return torch.sum(self.w.pow(2)) / 2
 
 	def train(self):
 		# 训练
 		for epoch in range(self.num_epochs):
 			for X, y in data_iter(self.batch_size, self.train_x, self.train_y):
 				y_hat = self.forward(X)
-				l = self.loss(y_hat, y)  # `X`和`y`的小批量损失
+				#l = self.loss(y_hat, y)  # `X`和`y`的小批量损失:不添加L2正则惩罚
+				l = self.loss(y_hat, y) + self.lambd *  self.l2_penalty() # `X`和`y`的小批量损失
 				# 因为`l`形状是(`batch_size`, 1)，而不是一个标量。`l`中的所有元素被加到一起，
 				# 并以此计算关于[`w`, `b`]的梯度
 				l.sum().backward()
 				sgd([self.w, self.b], self.learning_rate, self.batch_size)  # 使用参数的梯度更新参数
+			print('w的L2范数是：', torch.norm(self.w).item())
 			with torch.no_grad():
 				y_pred = self.forward(self.train_x)
 				train_l = self.loss(y_pred, self.train_y)
@@ -59,10 +65,13 @@ b = torch.zeros(1, requires_grad=True)
 true_w = torch.tensor(([2,-3.4]))
 true_b = 4.2
 
+lambd = 0
+#lambd = 3
+
 # 伪造数据
 train_x,train_y = synthetic_data(true_w,true_b,1000)
 
-lr = LinearRegression(w,b,train_x,train_y,learning_rate,batch_size,num_epochs)
+lr = LinearRegression(w,b,train_x,train_y,lambd,learning_rate,batch_size,num_epochs)
 lr.train()
 
 print(lr.w)
